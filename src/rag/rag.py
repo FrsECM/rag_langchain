@@ -30,7 +30,6 @@ class RAG_Pipeline():
         {context}
 
         You must respect theses rules : 
-        -   Quote sources documents for response.
         -   The answer should be in the same language than the question.
         -   Use bulletpoints when multiple answers
         Question: {question}
