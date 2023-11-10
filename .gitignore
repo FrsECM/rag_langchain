@@ -1,0 +1,4 @@
+faiss_db
+data/txt
+data/pdf
+.env

@@ -1,0 +1,9 @@
+langchain[FAISS]
+sentence_transformers
+notebook
+jupyter
+transformers
+PyMuPDF
+tqdm
+faiss-cpu
+openai
