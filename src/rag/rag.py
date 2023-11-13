@@ -25,13 +25,14 @@ class RAG_Pipeline():
             encode_kwargs={'normalize_embeddings': True}
         )
         self.db = None
-        template = """Answer the question based only on the following context:
+        template = """Answer the question based only on the following context
 
         {context}
 
         You must respect theses rules : 
         -   The answer should be in the same language than the question.
         -   Use bulletpoints when multiple answers
+        -   Add a Sources section in the end that reference document and position of the informations provided
         Question: {question}
         """
         self.prompt = ChatPromptTemplate.from_template(template)
@@ -59,7 +60,10 @@ class RAG_Pipeline():
     def generate(self,query,k=10):
         assert self.db is not None,"Load or Create a database before generating..."
         def format_docs(docs):
-            return "\n\n".join([f"{d.page_content}" for d in docs])
+            result = ""
+            for doc in docs:
+                result+=f"\n\n{doc.page_content}\nSources:\ndocument: {doc.metadata['source']}\nposition: {doc.metadata['start_index']}"
+            return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(
             api_key=os.getenv('OPENAI_API_KEY'),

@@ -16,3 +16,15 @@ OPENAI_MODEL="gpt-35-turbo-16k"
 PYTHONPATH="."
 ```
 
+You can either setup environment variables inside conda env...
+```bash
+# OPENAI API
+conda env config vars set OPENAI_API_KEY='<AZURE_OPENAI_API_KEY>'
+conda env config vars set OPENAI_BASE_URL='<OPENAI_BASE_URL>'
+conda env config vars set OPENAI_MODEL='<OPENAI_MODEL>'
+# LEGIFRANCE
+conda env config vars set PISTE_CLIENT_ID='<PISTE_CLIENT_ID>'
+conda env config vars set PISTE_CLIENT_SECRET='<PISTE_CLIENT_SECRET>'
+
+conda env config vars list
+```

@@ -1,4 +1,5 @@
 faiss_db
-data/txt
-data/pdf
+data/
 .env
+
+.vscode/custom
