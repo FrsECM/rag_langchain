@@ -27,6 +27,14 @@
             "program": "scripts/02__query_database.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Feed Database",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/03__feed_database.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

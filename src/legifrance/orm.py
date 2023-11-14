@@ -10,6 +10,7 @@ from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean
 import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
+from .utils import parse_date
 
 class Base(DeclarativeBase):
     pass
@@ -25,10 +26,21 @@ class LawText(Base):
     created_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     modif_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     
-    sections: Mapped[Optional[List['Section']]] = relationship(back_populates='lawtext')
+    sections: Mapped[List['Section']] = relationship(back_populates='lawtext')
     
+    def get_articles(self)->List['Article']:
+        articles = []
+        # We add articles...
+        # We add subsections articles...
+        for section in self.sections:
+            articles.extend(section.get_articles())
+        return articles
+
+    def __eq__(self, other: 'LawText') -> bool:
+        return self.legi_id == other.legi_id
+
     def __repr__(self) -> str:
-        return f"LawText(id={self.id!r}, title={self.title})"
+        return f"LawText(id={self.legi_id!r}, title={self.title})"
 
     def from_json(result: dict):
         date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
@@ -56,43 +68,85 @@ class Section(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
     
-    lawtext_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_TEXT.id'))
-    lawtext: Mapped['LawText'] = relationship(back_populates='sections')
+    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id'))
+    lawtext: Mapped[Optional['LawText']] = relationship(back_populates='sections')
     
     section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id'))    
     section: Mapped[Optional['Section']] = relationship(remote_side=[id])
 
-    articles: Mapped[Optional[List['Article']]] = relationship(back_populates='section')
+    sections: Mapped[List['Section']] = relationship(back_populates='section')
+    articles: Mapped[List['Article']] = relationship(back_populates='section')
     
+    def get_articles(self)->List['Article']:
+        articles = []
+        # We add articles...
+        articles.extend(self.articles)
+        # We add subsections articles...
+        for section in self.sections:
+            articles.extend(section.get_articles())
+        return articles
 
     def __repr__(self) -> str:
         return f"Section(id={self.id!r}, title={self.title})"
 
+    def __eq__(self, other: 'Section') -> bool:
+        return self.legi_id == other.legi_id
+
+    def from_json(result: dict):
+        sections = [Section.from_json(s) for s in result['sections']]
+        articles = [Article.from_json(s) for s in result['articles']]
+        section = Section(
+            legi_id=result['id'],
+            active=result['etat'] == 'VIGUEUR',
+            title=result['title'],
+            intOrdre=result['intOrdre'],
+            start_date = parse_date(result['dateDebut']),
+            end_date = parse_date(result['dateFin']),
+            created_date=parse_date(result['dateDebut']),
+            modif_date=parse_date(result['dateModif']) if result['dateModif'] else datetime.now()
+        )
+        section.sections = sections
+        section.articles = articles
+        return section
 
 class Article(Base):
     __tablename__ = 'LEGI_ART'
     id: Mapped[str] = mapped_column(String, primary_key=True, default=(lambda: str(uuid.uuid4())))
     legi_id: Mapped[str] = mapped_column(String,unique=True)
-    active: Mapped[Optional[bool]] = mapped_column(Boolean)
-    title: Mapped[str] = mapped_column(String)
-    
+    active: Mapped[Optional[bool]] = mapped_column(Boolean)    
     num: Mapped[str] = mapped_column(String(30))
-    
+
     section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id'))
     section: Mapped['Section'] = relationship(back_populates='articles')
     
+    version: Mapped[Optional[str]] = mapped_column(String(30))
+    title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     nota: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     
     created_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     modif_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
-    
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None, nullable=True)
     
 
     def __repr__(self) -> str:
         return f"Article(cid={self.id!r}, title={self.title})"
+    
+    def from_json(result: dict):
+        article = Article(
+            legi_id=result['id'],
+            active=result['etat'] == 'VIGUEUR',
+            num=f"{result['num']}"
+        )
+        return article
+
+    def update(self,result:dict):
+        self.version = result['versionArticle']
+        self.start_date = datetime.fromtimestamp(result['dateDebut']/1e3)
+        self.end_date = datetime.fromtimestamp(result['dateFin']/1e3)
+        self.content = result['texte']
+        self.nota = result['nota']
 
 
 if __name__ == '__main__':
@@ -122,8 +176,8 @@ if __name__ == '__main__':
         section3 = Section(legi_id='LEGISECT0002', active=True,
           title='My sous section1')
         section3.lawtext = law_text
-        section3.section = section2
-        session.add_all([section1, section2, section3])
+        section2.sections.append(section3)
+        session.add_all([section1, section2])
         session.commit()
     with Session(engine) as (session):
         section_query = select(Section)
