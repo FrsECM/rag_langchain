@@ -7,10 +7,14 @@
 # Size of source mod 2**32: 5723 bytes
 from typing import List, Optional
 from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean
+from sqlalchemy import select
 import uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
 from .utils import parse_date
+from sqlalchemy.engine import Engine
+from sqlalchemy import event
+
 
 class Base(DeclarativeBase):
     pass
@@ -26,7 +30,7 @@ class LawText(Base):
     created_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     modif_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     
-    sections: Mapped[List['Section']] = relationship(back_populates='lawtext')
+    sections: Mapped[List['Section']] = relationship(back_populates='lawtext',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
     def get_articles(self)->List['Article']:
         articles = []
@@ -40,7 +44,7 @@ class LawText(Base):
         return self.legi_id == other.legi_id
 
     def __repr__(self) -> str:
-        return f"LawText(id={self.legi_id!r}, title={self.title})"
+        return f"LawText(legi_id={self.legi_id!r}, title={self.title})"
 
     def from_json(result: dict):
         date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
@@ -68,14 +72,14 @@ class Section(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
     
-    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id'))
+    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'))
     lawtext: Mapped[Optional['LawText']] = relationship(back_populates='sections')
     
-    section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id'))    
+    section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'))    
     section: Mapped[Optional['Section']] = relationship(remote_side=[id])
 
-    sections: Mapped[List['Section']] = relationship(back_populates='section')
-    articles: Mapped[List['Article']] = relationship(back_populates='section')
+    sections: Mapped[List['Section']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
+    articles: Mapped[List['Article']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
     def get_articles(self)->List['Article']:
         articles = []
@@ -86,8 +90,15 @@ class Section(Base):
             articles.extend(section.get_articles())
         return articles
 
+    def get_sections(self)->List['Section']:
+        sections=[]
+        sections.extend(self.sections)
+        for section in self.sections:
+            sections.extend(section.get_sections())
+        return sections
+
     def __repr__(self) -> str:
-        return f"Section(id={self.id!r}, title={self.title})"
+        return f"Section(legi_id={self.legi_id!r}, title={self.title})"
 
     def __eq__(self, other: 'Section') -> bool:
         return self.legi_id == other.legi_id
@@ -113,10 +124,11 @@ class Article(Base):
     __tablename__ = 'LEGI_ART'
     id: Mapped[str] = mapped_column(String, primary_key=True, default=(lambda: str(uuid.uuid4())))
     legi_id: Mapped[str] = mapped_column(String,unique=True)
-    active: Mapped[Optional[bool]] = mapped_column(Boolean)    
+    active: Mapped[Optional[bool]] = mapped_column(Boolean)
+    empty: Mapped[Optional[bool]] = mapped_column(Boolean,default=False)
     num: Mapped[str] = mapped_column(String(30))
 
-    section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id'))
+    section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'))
     section: Mapped['Section'] = relationship(back_populates='articles')
     
     version: Mapped[Optional[str]] = mapped_column(String(30))
@@ -131,7 +143,7 @@ class Article(Base):
     
 
     def __repr__(self) -> str:
-        return f"Article(cid={self.id!r}, title={self.title})"
+        return f"Article(legi_id={self.legi_id!r}, title={self.title})"
     
     def from_json(result: dict):
         article = Article(

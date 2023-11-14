@@ -5,6 +5,15 @@ from typing import Union,List
 from .orm import Base,LawText,Section,Article
 import os
 
+from sqlalchemy.engine import Engine
+from sqlalchemy import event
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 class LegifranceDatabase:
     def __init__(self,path:str):
         self.path = path
@@ -51,5 +60,10 @@ class LegifranceDatabase:
         result = self.session.query(Article).all()
         return result
     
+    def add_sections(self,lawtext:LawText,sections:List[Section]):
+        for section in sections:
+            if section not in lawtext.sections:
+                lawtext.sections.append(section)
+
     def commit(self):
         self.session.commit()

@@ -2,14 +2,12 @@ from src.legifrance import LegifranceClient,LegifranceDatabase
 from src.legifrance.orm import Article
 import argparse
 from tqdm.auto import tqdm
-from concurrent.futures import ThreadPoolExecutor,as_completed
-import os
 from typing import Tuple,Dict
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--db_path',default='data/legifrance/database.db')
-parser.add_argument('--db_reset',action='store_true',default=False)
-parser.add_argument('--law_text',default=None)
+parser.add_argument('--db_reset',action='store_true',default=True)
+parser.add_argument('--law_text',default='code')
 parser.add_argument('--update_articles',action='store_true',default=True)
 
 
@@ -21,19 +19,18 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
     api_lawtexts = []
     if law_text:
         api_lawtexts = client.list_lawtexts(law_text)
-        database.add_lawtexts(api_lawtexts)
+        existing_law_texts = database.get_all_lawtexts()
+        database.add_lawtexts([t for t in api_lawtexts if t not in existing_law_texts])
     # We get all_lawtexts...
     db_lawtexts = database.get_all_lawtexts()
     # We only update newly created...
     for text in [t for t in db_lawtexts if t in api_lawtexts]:
         sections = client.get_lawtext(text)
-        for section in sections:
-            if section not in text.sections:
-                text.sections.append(section)
+        database.add_sections(lawtext=text,sections=sections)
         database.commit()
     if update_articles:
         for text in db_lawtexts:
-            articles = [a for a in text.get_articles() if a.content is None]
+            articles = [a for a in text.get_articles() if not a.empty and a.content is None]
             # It's slow, then we'll accelerate it with concurent querying.
             def get_article_dict(article:Article)->Tuple[Article,Dict]:
                 return article,client.get_article_dict(article)
@@ -45,8 +42,9 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
                 if dict is not None:
                     article.title = f"{text.title} - {article.section.title} - Art. {article.num}"
                     article.update(dict)
+                    article.empty=False
                 else:
-                    article.active=False
+                    article.empty=True
                 database.commit()
                 a_bar.set_postfix(**{'article':f'Art. {article.num}'})
 
