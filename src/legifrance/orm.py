@@ -22,8 +22,8 @@ class Base(DeclarativeBase):
 
 class LawText(Base):
     __tablename__ = 'LEGI_TEXT'
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=(lambda: str(uuid.uuid4())))
-    legi_id: Mapped[str] = mapped_column(String,unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True,index=True)
+    legi_id: Mapped[str] = mapped_column(String)
     active: Mapped[Optional[bool]] = mapped_column(Boolean)
     title: Mapped[Optional[str]] = mapped_column(String)
     
@@ -59,8 +59,8 @@ class LawText(Base):
 
 class Section(Base):
     __tablename__ = 'LEGI_SECTION'
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=(lambda: str(uuid.uuid4())))
-    legi_id: Mapped[str] = mapped_column(String,unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True,index=True)
+    legi_id: Mapped[str] = mapped_column(String)
     active: Mapped[Optional[bool]] = mapped_column(Boolean)
     title: Mapped[str] = mapped_column(String)
     
@@ -122,8 +122,8 @@ class Section(Base):
 
 class Article(Base):
     __tablename__ = 'LEGI_ART'
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=(lambda: str(uuid.uuid4())))
-    legi_id: Mapped[str] = mapped_column(String,unique=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True,index=True)
+    legi_id: Mapped[str] = mapped_column(String)
     active: Mapped[Optional[bool]] = mapped_column(Boolean)
     empty: Mapped[Optional[bool]] = mapped_column(Boolean,default=False)
     num: Mapped[str] = mapped_column(String(30))
