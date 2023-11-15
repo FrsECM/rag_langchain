@@ -10,7 +10,7 @@ from langchain.schema.runnable import RunnablePassthrough
 import openai
 import os
 
-class RAG_Pipeline():
+class FAISS_RAG():
     def __init__(self) -> None:
         # Splitter 
         self.text_splitter = RecursiveCharacterTextSplitter(
