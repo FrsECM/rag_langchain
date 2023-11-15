@@ -10,7 +10,7 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument('--db_path',default='data/sqlite/legifrance.db')
 parser.add_argument('--db_reset',action='store_true',default=False)
-parser.add_argument('--law_text',default=None)
+parser.add_argument('--law_text',default='impôt')
 parser.add_argument('--update_articles',action='store_true',default=True)
 
 
@@ -23,52 +23,15 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
     if law_text:
         api_lawtexts = client.list_lawtexts(law_text)
         existing_law_texts = database.get_all_lawtexts()
-        database.add_lawtexts([t for t in api_lawtexts if t not in existing_law_texts])
-    # We get all_lawtexts...
-    db_lawtexts = database.get_all_lawtexts()
-    # We only update newly created...
-    for text in [t for t in db_lawtexts if t in api_lawtexts]:
-        sections = client.get_lawtext(text)
-        database.add_sections(lawtext=text,sections=sections)
-        database.commit()
-    if update_articles:
-        for text in db_lawtexts:
-            # We indexed by article then it will be fast...
-            articles = text.get_all_articles()
-            p_bar = tqdm(desc=text.title,total=len(articles))
-            def get_article_dict(article_legi_id,i):
-                return i,client.get_article_dict(article_legi_id)
-            futures=[]
-            # max_workers = 1 => No parallel..
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                for i,article in enumerate(articles):
-                    if article.content is None:
-                        futures.append(executor.submit(get_article_dict,article.legi_id,i))
-                    else:
-                        p_bar.set_postfix(**{'article':article.title})
-                        p_bar.update(1)
-                for future in as_completed(futures):
-                    i,a_dict = future.result()
-                    article = articles[i]
-                    article:Article
-                    if a_dict is not None:
-                        title = f"Art. {article.num}"
-                        parent_lawtext = None
-                        parent = article
-                        while parent_lawtext is None:
-                            parent = parent.section
-                            parent_lawtext = parent.lawtext
-                            root = parent.title.split(':')[0].strip()
-                            title=f"{root} - {title}"
-                        title = f"{text.title} - {title}"
-                        article.title = title
-                        article.update(a_dict)
-                        article.empty = False
-                        p_bar.set_postfix(**{'article':article.title})
-                    else:
-                        article.empty = True
-                    p_bar.update(1)
-                    database.commit()
+        law_texts_to_add =[t for t in api_lawtexts if t not in existing_law_texts]
+        database.add_lawtexts(law_texts_to_add)
+        # We only update newly created...
+        for i,text in enumerate(law_texts_to_add):
+            print(f'{text.title} - {i+1}/{len(law_text)}')
+            sections = client.get_lawtext(text)
+            database.add_sections(lawtext=text,sections=sections)
+            database.commit()
+
 
 
 

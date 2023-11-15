@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select,func
+from sqlalchemy import select,func,or_
 from typing import Union,List
 from .orm import Base,LawText,Section,Article
 import os
@@ -52,6 +52,24 @@ class LegifranceDatabase:
         self.session.add_all(lawtexts)
         self.session.commit()
 
+    def get_lawtexts(self,title_str:str)->List[LawText]:
+        """Get lawtexts that correspond to an input string.
+
+        Args:
+            title_str (str): _description_
+
+        Returns:
+            List[LawText]: _description_
+        """
+        query = select(LawText).where(
+            or_(
+                LawText.title.like(title_str),
+                LawText.legi_id.like(title_str)
+                )
+        )
+        results = self.session.execute(query).all()
+        return [r[0] for r in results]
+    
     def get_all_lawtexts(self):
         result = self.session.query(LawText).all()
         return result

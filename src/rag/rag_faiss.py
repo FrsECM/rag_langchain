@@ -62,7 +62,7 @@ class FAISS_RAG():
         def format_docs(docs):
             result = ""
             for doc in docs:
-                result+=f"\n\n{doc.page_content}\nSources:\ndocument: {doc.metadata['source']}\nposition: {doc.metadata['start_index']}"
+                result+=f"\n\n{doc.page_content}\nSources:\- {doc.metadata['title']}"
             return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(

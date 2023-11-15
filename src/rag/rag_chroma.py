@@ -6,12 +6,15 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import AzureChatOpenAI
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
-
+from typing import List
+from tqdm.auto import tqdm
 import openai
 import os
 
 class CHROMA_RAG():
-    def __init__(self) -> None:
+    def __init__(self,db_dir:str) -> None:
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
         # Splitter 
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size = 1000,
@@ -24,11 +27,11 @@ class CHROMA_RAG():
             model_kwargs={'device': 'cuda'},
             encode_kwargs={'normalize_embeddings': True}
         )
-        self.db = None
+        # Chroma
+        self.db = Chroma(collection_name='chroma_db',embedding_function=self.embeddings,persist_directory=db_dir)
+
         template = """Answer the question based only on the following context
-
         {context}
-
         You must respect theses rules : 
         -   The answer should be in the same language than the question.
         -   Use bulletpoints when multiple answers
@@ -40,14 +43,24 @@ class CHROMA_RAG():
     def create_db(self,db_path:str):
         self.db = Chroma(collection_name='chroma_db',embedding_function=self.embeddings,persist_directory=db_path)
     
-    def add_data(self,text:str,metadata:dict):
-        assert isinstance(self.db,Chroma),'DB should be a chroma db.'
-        document = Document(page_content=text | self.text_splitter, metadata=metadata)
-        self.db.add_documents(document)
+    def create_documents(self,texts:List[str],metadatas:List[dict]):
+        assert len(texts)==len(metadatas),f'Lenght of texts and metadata should be equals {len(texts)} / {len(metadatas)} given'
+        documents=[]
+        for text,metadata in tqdm(zip(texts,metadatas),total=len(texts)):
+            chunks = self.text_splitter.split_text(text)
+            docs = [Document(page_content=c,metadata=metadata) for c in chunks]
+            documents.extend(docs)
+        return documents
+
+
+
+    def add_documents(self,documents:List[Document]):
+        if len(documents)>0:
+            self.db.add_documents(documents)
 
     def retrieve(self,query,k=10):
         embedding_vector = self.embeddings.embed_query(query)
-        docs_and_scores = self.db.similarity_search_by_vector(embedding_vector,k=k)
+        docs_and_scores = self.db.similarity_search_by_vector_with_relevance_scores(embedding_vector,k=k)
         return docs_and_scores
 
     def generate(self,query,k=10):
@@ -55,7 +68,7 @@ class CHROMA_RAG():
         def format_docs(docs):
             result = ""
             for doc in docs:
-                result+=f"\n\n{doc.page_content}\nSources:\ndocument: {doc.metadata['source']}\nposition: {doc.metadata['start_index']}"
+                result+=f"\n\n{doc.metadata['content']}\nSource:\n{doc.metadata['source']}"
             return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(

@@ -81,10 +81,10 @@ class Section(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
     
-    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'),index=True)
+    lawtext_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'),index=True)
     lawtext: Mapped[Optional['LawText']] = relationship(back_populates='sections')
     
-    section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)    
+    section_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)    
     section: Mapped[Optional['Section']] = relationship(remote_side=[id])
 
     sections: Mapped[List['Section']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
@@ -137,7 +137,7 @@ class Article(Base):
     empty: Mapped[Optional[bool]] = mapped_column(Boolean,default=False)
     num: Mapped[str] = mapped_column(String(30))
 
-    section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)
+    section_id: Mapped[int] = mapped_column(Integer, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)
     section: Mapped['Section'] = relationship(back_populates='articles')
     
     version: Mapped[Optional[str]] = mapped_column(String(30))
