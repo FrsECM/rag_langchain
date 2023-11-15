@@ -5,6 +5,7 @@ from datetime import datetime,timedelta
 from typing import List
 from .orm import LawText,Section,Article
 from tqdm.auto import tqdm
+import time
 
 class LegifranceClient:
     def __init__(self,client_id:str=None,client_secret:str=None,production:bool=False):
@@ -13,11 +14,13 @@ class LegifranceClient:
             self.client_secret = os.getenv("PISTE_PROD_CLIENT_SECRET") if client_secret is None else client_secret
             self.base_url = "http://api.piste.gouv.fr/dila/legifrance/lf-engine-app"
             self.authentication_url = "https://oauth.piste.gouv.fr/api/oauth/token"
+            self.api_limit_per_sec = 20
         else:
             self.client_id = os.getenv("PISTE_SANDBOX_CLIENT_ID") if client_id is None else client_id        
             self.client_secret = os.getenv("PISTE_SANDBOX_CLIENT_SECRET") if client_secret is None else client_secret
             self.base_url = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
             self.authentication_url = "https://sandbox-oauth.piste.gouv.fr/api/oauth/token"
+            self.api_limit_per_sec = 2
         self.token=None
         self.token_expiration=None
         # https://stackoverflow.com/questions/51600489/why-does-a-request-via-python-requests-takes-almost-seven-times-longer-than-in
@@ -27,7 +30,8 @@ class LegifranceClient:
         now = datetime.now()
         if self.token is None or now>=self.token_expiration:
             self._refresh_token()
-
+        # We wait to respect the api limit.
+        time.sleep(1./self.api_limit_per_sec)
         header = {
             'Content-Type': 'application/json',
             "Authorization": f"Bearer {self.token}"

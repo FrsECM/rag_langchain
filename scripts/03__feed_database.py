@@ -18,7 +18,7 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
     database = LegifranceDatabase(path=db_path)
     database.create_database(overwrite=db_reset,exist_ok=True)
 
-    client = LegifranceClient()
+    client = LegifranceClient(production=False)
     api_lawtexts = []
     if law_text:
         api_lawtexts = client.list_lawtexts(law_text)
@@ -39,7 +39,8 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
             def get_article_dict(article_legi_id,i):
                 return i,client.get_article_dict(article_legi_id)
             futures=[]
-            with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            # max_workers = 1 => No parallel..
+            with ThreadPoolExecutor(max_workers=1) as executor:
                 for i,article in enumerate(articles):
                     if article.content is None:
                         futures.append(executor.submit(get_article_dict,article.legi_id,i))
