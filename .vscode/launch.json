@@ -29,10 +29,18 @@
             "justMyCode": true
         },
         {
-            "name": "Feed Database from API",
+            "name": "Feed Database LawTexts from API",
             "type": "python",
             "request": "launch",
-            "program": "scripts/03__feed_db_API.py",
+            "program": "scripts/03__feed_db_lawtexts_API.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Feed Database Articles from API",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/04__feed_db_articles_API.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -40,7 +48,7 @@
             "name": "Feed Database Articles from Web",
             "type": "python",
             "request": "launch",
-            "program": "scripts/03__feed_db_articles_WEB.py",
+            "program": "scripts/04__feed_db_articles_WEB.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

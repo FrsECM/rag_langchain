@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor,as_completed
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--db_path',default='data/legifrance/database.db')
+parser.add_argument('--db_path',default='data/sqlite/legifrance.db')
 parser.add_argument('--db_reset',action='store_true',default=False)
 parser.add_argument('--law_text',default=None)
 parser.add_argument('--update_articles',action='store_true',default=True)

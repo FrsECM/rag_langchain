@@ -19,12 +19,10 @@ class LegifranceScrapper():
                 desc = article.find(class_='name-article')
                 legi_id = desc.attrs['data-anchor']
                 title = desc.get_text().strip()
-                pattern = r'^Article\s(?P<Num>\d+)\s\((?P<Statut>.+)\)$'
-                match = re.match(pattern,title)
                 is_abrogated=False
-                if match:
-                    title = f"Art. {match.group('Num')}"
-                    is_abrogated = match.group('Statut')=='abrogé'
+                if '(abrogé)' in title:
+                     is_abrogated=True
+                     
                 content_root = article.find(class_='content')
                 content_paragraphs = content_root.find_all('p')
                 content = ""

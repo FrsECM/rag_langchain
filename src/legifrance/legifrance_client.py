@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 import time
 
 class LegifranceClient:
-    def __init__(self,client_id:str=None,client_secret:str=None,production:bool=False):
+    def __init__(self,client_id:str=None,client_secret:str=None,production:bool=False,api_limit_per_second:int=None):
         if production:
             self.client_id = os.getenv("PISTE_PROD_CLIENT_ID") if client_id is None else client_id        
             self.client_secret = os.getenv("PISTE_PROD_CLIENT_SECRET") if client_secret is None else client_secret
@@ -21,6 +21,8 @@ class LegifranceClient:
             self.base_url = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
             self.authentication_url = "https://sandbox-oauth.piste.gouv.fr/api/oauth/token"
             self.api_limit_per_sec = 2
+        if api_limit_per_second is not None:
+            self.api_limit_per_sec = api_limit_per_second
         self.token=None
         self.token_expiration=None
         # https://stackoverflow.com/questions/51600489/why-does-a-request-via-python-requests-takes-almost-seven-times-longer-than-in
