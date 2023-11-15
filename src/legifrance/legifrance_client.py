@@ -7,11 +7,17 @@ from .orm import LawText,Section,Article
 from tqdm.auto import tqdm
 
 class LegifranceClient:
-    def __init__(self,client_id:str=None,client_secret:str=None):
-        self.client_id = os.getenv("PISTE_CLIENT_ID") if client_id is None else client_id        
-        self.client_secret = os.getenv("PISTE_CLIENT_SECRET") if client_secret is None else client_secret
-        self.base_url = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
-        self.authentication_url = "https://sandbox-oauth.piste.gouv.fr/api/oauth/token"
+    def __init__(self,client_id:str=None,client_secret:str=None,production:bool=False):
+        if production:
+            self.client_id = os.getenv("PISTE_PROD_CLIENT_ID") if client_id is None else client_id        
+            self.client_secret = os.getenv("PISTE_PROD_CLIENT_SECRET") if client_secret is None else client_secret
+            self.base_url = "http://api.piste.gouv.fr/dila/legifrance/lf-engine-app"
+            self.authentication_url = "https://oauth.piste.gouv.fr/api/oauth/token"
+        else:
+            self.client_id = os.getenv("PISTE_SANDBOX_CLIENT_ID") if client_id is None else client_id        
+            self.client_secret = os.getenv("PISTE_SANDBOX_CLIENT_SECRET") if client_secret is None else client_secret
+            self.base_url = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
+            self.authentication_url = "https://sandbox-oauth.piste.gouv.fr/api/oauth/token"
         self.token=None
         self.token_expiration=None
         # https://stackoverflow.com/questions/51600489/why-does-a-request-via-python-requests-takes-almost-seven-times-longer-than-in

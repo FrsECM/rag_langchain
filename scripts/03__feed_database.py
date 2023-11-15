@@ -41,9 +41,10 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
             futures=[]
             with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
                 for i,article in enumerate(articles):
-                    if not article.empty and article.content is None:
+                    if article.content is None:
                         futures.append(executor.submit(get_article_dict,article.legi_id,i))
                     else:
+                        p_bar.set_postfix(**{'article':article.title})
                         p_bar.update(1)
                 for future in as_completed(futures):
                     i,a_dict = future.result()
