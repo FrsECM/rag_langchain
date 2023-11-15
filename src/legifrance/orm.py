@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
 
 class LawText(Base):
     __tablename__ = 'LEGI_TEXT'
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True,index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     legi_id: Mapped[str] = mapped_column(String)
     active: Mapped[Optional[bool]] = mapped_column(Boolean)
     title: Mapped[Optional[str]] = mapped_column(String)
@@ -32,7 +32,16 @@ class LawText(Base):
     
     sections: Mapped[List['Section']] = relationship(back_populates='lawtext',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
-    def get_articles(self)->List['Article']:
+    def get_all_sections(self)->List['Section']:
+        sections = []
+        # We add articles...
+        # We add subsections articles...
+        for section in self.sections:
+            sections.extend(section.get_sections())
+        sections.extend(self.sections)
+        return sections
+
+    def get_all_articles(self)->List['Article']:
         articles = []
         # We add articles...
         # We add subsections articles...
@@ -72,10 +81,10 @@ class Section(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
     
-    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'))
+    lawtext_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'),index=True)
     lawtext: Mapped[Optional['LawText']] = relationship(back_populates='sections')
     
-    section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'))    
+    section_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)    
     section: Mapped[Optional['Section']] = relationship(remote_side=[id])
 
     sections: Mapped[List['Section']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
@@ -128,7 +137,7 @@ class Article(Base):
     empty: Mapped[Optional[bool]] = mapped_column(Boolean,default=False)
     num: Mapped[str] = mapped_column(String(30))
 
-    section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'))
+    section_id: Mapped[str] = mapped_column(String, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)
     section: Mapped['Section'] = relationship(back_populates='articles')
     
     version: Mapped[Optional[str]] = mapped_column(String(30))

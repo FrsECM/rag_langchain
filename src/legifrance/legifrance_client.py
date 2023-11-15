@@ -102,10 +102,10 @@ class LegifranceClient:
             return result
         return [Section.from_json(t) for t in s_bar]
 
-    def get_article_dict(self,article:Article)->dict:
+    def get_article_dict(self,article_legi_id:str)->dict:
         api_url = f"{self.base_url}/consult/getArticleByCid"
         payload = json.dumps({
-            "cid": article.legi_id
+            "cid": article_legi_id
         })
         response = self.request_session.post(
             url=api_url,
@@ -118,8 +118,6 @@ class LegifranceClient:
             if len(article_dict_list)>0:
                 article_dict = article_dict_list[0] # Last version of the article...
                 return article_dict
-            else:
-                article.active=False
         return None
     
     def update_article(self,article:Article)->Article:
