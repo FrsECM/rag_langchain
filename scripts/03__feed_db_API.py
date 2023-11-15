@@ -68,7 +68,7 @@ def main(db_path:str,db_reset:bool,law_text:str,update_articles:bool):
                     else:
                         article.empty = True
                     p_bar.update(1)
-            database.commit()
+                    database.commit()
 
 
 

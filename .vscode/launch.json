@@ -29,10 +29,18 @@
             "justMyCode": true
         },
         {
-            "name": "Feed Database",
+            "name": "Feed Database from API",
             "type": "python",
             "request": "launch",
-            "program": "scripts/03__feed_database.py",
+            "program": "scripts/03__feed_db_API.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Feed Database Articles from Web",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/03__feed_db_articles_WEB.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
