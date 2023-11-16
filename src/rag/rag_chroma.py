@@ -9,6 +9,7 @@ from langchain.schema.runnable import RunnablePassthrough
 from typing import List
 from tqdm.auto import tqdm
 import openai
+import json
 import os
 
 class CHROMA_RAG():
@@ -27,10 +28,12 @@ class CHROMA_RAG():
             model_kwargs={'device': 'cuda'},
             encode_kwargs={'normalize_embeddings': True}
         )
+        self.db_dir = db_dir
+        self.config_path = os.path.join(self.db_dir,'config.json')
         # Chroma
         self.db = Chroma(collection_name='chroma_db',embedding_function=self.embeddings,persist_directory=db_dir)
 
-        template = """Answer the question based only on the following context
+        self.template = """Answer the question based only on the following context
         {context}
         You must respect theses rules : 
         -   The answer should be in the same language than the question.
@@ -38,7 +41,21 @@ class CHROMA_RAG():
         -   Add a Sources section in the end that reference document and position of the informations provided
         Question: {question}
         """
-        self.prompt = ChatPromptTemplate.from_template(template)
+        self.law_texts=None
+        self.load_config()
+    
+    def save_config(self):
+        with open(self.config_path,'w') as jsf:
+            json.dump({'law_texts':self.law_texts},jsf,default='str',indent=4)
+
+    def load_config(self):
+        if os.path.exists(self.config_path):
+            with open(self.config_path,'r') as jsf:
+                config = json.load(jsf)
+                self.law_texts = config['law_texts']
+        else:
+            self.law_texts = []
+            self.save_config()
 
     def create_db(self,db_path:str):
         self.db = Chroma(collection_name='chroma_db',embedding_function=self.embeddings,persist_directory=db_path)
@@ -53,10 +70,11 @@ class CHROMA_RAG():
         return documents
 
 
-
-    def add_documents(self,documents:List[Document]):
+    def add_documents(self,documents:List[Document],law_text_title:str):
         if len(documents)>0:
+            self.law_texts.append(law_text_title)
             self.db.add_documents(documents)
+            self.save_config()
 
     def retrieve(self,query,k=10):
         embedding_vector = self.embeddings.embed_query(query)
@@ -64,11 +82,13 @@ class CHROMA_RAG():
         return docs_and_scores
 
     def generate(self,query,k=10):
+        prompt = ChatPromptTemplate.from_template(self.template)
+
         assert self.db is not None,"Load or Create a database before generating..."
         def format_docs(docs):
             result = ""
             for doc in docs:
-                result+=f"\n\n{doc.metadata['content']}\nSource:\n{doc.metadata['source']}"
+                result+=f"\n\n{doc.page_content}\nSource:\n{doc.metadata['source']}"
             return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(
@@ -78,7 +98,7 @@ class CHROMA_RAG():
             api_version="2023-07-01-preview")
         chain = (
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
-            | self.prompt
+            | prompt
             | model
             | StrOutputParser()
         )

@@ -15,10 +15,11 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 
 class LegifranceDatabase:
-    def __init__(self,path:str):
+    def __init__(self,path:str,sync:bool=True):
         self.path = path
-        self.engine = create_engine(f'sqlite:///{path}',echo=False)
-        self.session = sessionmaker(bind=self.engine)()
+        if sync:
+            self.engine = create_engine(f'sqlite:///{path}',echo=False)
+            self.session = sessionmaker(bind=self.engine)()
 
     def __del__(self):
         self.session.close()
@@ -64,6 +65,7 @@ class LegifranceDatabase:
         query = select(LawText).where(
             or_(
                 LawText.title.like(title_str),
+                LawText.title.contains(title_str),
                 LawText.legi_id.like(title_str)
                 )
         )

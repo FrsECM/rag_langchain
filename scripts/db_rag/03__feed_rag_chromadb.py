@@ -8,12 +8,12 @@ from tqdm.auto import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--db_path',default='data/sqlite/legifrance.db')
 parser.add_argument('--rag_path',default='data/chroma/')
-parser.add_argument('--lawtext',default='LEGITEXT000006070719')
+parser.add_argument('--lawtext_str_or_id',default='rural')
 
-def main(db_path:str,rag_path:str,lawtext:str):
+def main(db_path:str,rag_path:str,lawtext_str_or_id:str):
     db = LegifranceDatabase(db_path)
 
-    lawtexts = db.get_lawtexts(lawtext)
+    lawtexts = db.get_lawtexts(lawtext_str_or_id)
     rag = CHROMA_RAG(rag_path)
     texts=[]
     metadatas = []
@@ -47,8 +47,8 @@ def main(db_path:str,rag_path:str,lawtext:str):
             text = f"{force_type(article.content)}\n{force_type(article.nota)}"
             texts.append(text)
             metadatas.append(metadata)
-    documents = rag.create_documents(texts,metadatas)
-    rag.add_documents(documents)
+        documents = rag.create_documents(texts,metadatas)
+        rag.add_documents(documents,lawtext.title)
     
     
 
