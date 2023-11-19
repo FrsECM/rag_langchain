@@ -5,7 +5,7 @@
 # Embedded file name: /mnt/c/BUSCODE/perso/langchain_law/notebooks/../src/legifrance/legifrance_orm.py
 # Compiled at: 2023-11-13 22:13:15
 # Size of source mod 2**32: 5723 bytes
-from typing import List, Optional
+from typing import List, Optional,Dict
 from sqlalchemy import String, DateTime, Integer, ForeignKey, Boolean
 from sqlalchemy import select
 import uuid
@@ -36,20 +36,20 @@ class LawText(Base):
     
     sections: Mapped[List['Section']] = relationship(back_populates='lawtext',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
-    def get_all_sections(self)->List['Section']:
-        sections = self.sections
+    def get_all_sections(self)->Dict[str,'Section']:
+        sections = {s.legi_id:s for s in self.sections}
         # We add articles...
         # We add subsections articles...
         for section in self.sections:
-            sections.extend(section.get_sections())
+            sections.update(section.get_sections())
         return sections
 
-    def get_all_articles(self)->List['Article']:
-        articles = []
+    def get_all_articles(self)->Dict[str,'Article']:
+        articles = {}
         # We add articles...
         # We add subsections articles...
         for section in self.sections:
-            articles.extend(section.get_articles())
+            articles.update(section.get_articles())
         return articles
 
     def __eq__(self, other: 'LawText') -> bool:
@@ -81,21 +81,20 @@ class CollectiveConvention(Base):
     sections: Mapped[List['Section']] = relationship(back_populates='convention',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     articles:Mapped[List['Article']] = relationship(back_populates='convention',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
 
-    def get_all_sections(self)->List['Section']:
-        sections = self.sections
+    def get_all_sections(self)->Dict[str,'Section']:
+        sections = {s.legi_id:s for s in self.sections}
         # We add articles...
         # We add subsections articles...
         for section in self.sections:
-            sections.extend(section.get_sections())
+            sections.update(section.get_sections())
         return sections
 
-    def get_all_articles(self)->List['Article']:
-        articles = []
+    def get_all_articles(self)->Dict[str,'Article']:
+        articles = {a.legi_id:a for a in self.articles}
         # We add articles...
         # We add subsections articles...
         for section in self.sections:
-            articles.extend(section.get_articles())
-        articles.extend(self.articles)
+            articles.update(section.get_articles())
         return articles
 
     def __eq__(self, other: 'LawText') -> bool:
@@ -141,20 +140,18 @@ class Section(Base):
     sections: Mapped[List['Section']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     articles: Mapped[List['Article']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
-    def get_articles(self)->List['Article']:
-        articles = []
+    def get_articles(self)->Dict[str,'Article']:
+        articles = {a.legi_id:a for a in self.articles}
         # We add articles...
-        articles.extend(self.articles)
         # We add subsections articles...
         for section in self.sections:
-            articles.extend(section.get_articles())
+            articles.update(section.get_articles())
         return articles
 
-    def get_sections(self)->List['Section']:
-        sections=[]
-        sections.extend(self.sections)
+    def get_sections(self)->Dict[str,'Section']:
+        sections={s.legi_id:s for s in self.sections}
         for section in self.sections:
-            sections.extend(section.get_sections())
+            sections.update(section.get_sections())
         return sections
 
     def __repr__(self) -> str:

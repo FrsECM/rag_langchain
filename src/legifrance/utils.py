@@ -10,3 +10,16 @@ def parse_date(date):
         except ValueError:
             pass
     raise Exception(f'Unparsable date {date} with dateformat {DATE_FORMATS}')
+
+def str_date(date:datetime):
+    if date is not None:
+        return date.strftime('%Y-%m-%d')
+    else:
+        return 'None'
+def force_type(input):
+    if isinstance(input,(float,int,bool,str)):
+        return input
+    if input is None:
+        return ''
+    else:
+        raise Exception('type incompatible with vector database...')

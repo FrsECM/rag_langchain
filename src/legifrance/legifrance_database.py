@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select,func,or_
 from typing import Union,List
-from .orm import Base,LawText,Section,Article
+from .orm import Base,LawText,Section,Article,CollectiveConvention
 import os
 
 from sqlalchemy.engine import Engine
@@ -71,7 +71,27 @@ class LegifranceDatabase:
         )
         results = self.session.execute(query).all()
         return [r[0] for r in results]
-    
+
+    def get_conventions(self,title_str:str)->List[CollectiveConvention]:
+        """Get conventions that correspond to an input string.
+
+        Args:
+            title_str (str): _description_
+
+        Returns:
+            List[CollectiveConvention]: _description_
+        """
+        query = select(CollectiveConvention).where(
+            or_(
+                CollectiveConvention.title.like(title_str),
+                CollectiveConvention.title.contains(title_str),
+                CollectiveConvention.legi_id.like(title_str)
+                )
+        )
+        results = self.session.execute(query).all()
+        return [r[0] for r in results]
+
+
     def get_all_lawtexts(self):
         result = self.session.query(LawText).all()
         return result

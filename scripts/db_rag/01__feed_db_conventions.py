@@ -37,6 +37,9 @@ def main(db_path:str,db_reset:bool,convention_name:str):
         convention:CollectiveConvention
         if len(convention.sections)==0:
             convention = client.get_convention(convention)
+            articles = convention.get_all_articles()
+            for article in tqdm(articles.values(),desc=convention.title):
+                article.title = f"{convention.title} - Art. {article.num}"
     database.session.add_all(created_conventions)
     database.commit()
 

@@ -8,7 +8,8 @@ from tqdm.auto import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--db_path',default='data/sqlite/legifrance.db')
 parser.add_argument('--db_reset',action='store_true',default=False)
-parser.add_argument('--law_names',default='urbanisme|impôt|rural|Code civil|forestier|commune|tourisme')
+#parser.add_argument('--law_names',default='urbanisme|impôt|rural|Code civil|forestier|commune|tourisme')
+parser.add_argument('--law_names',default='travail')
 
 
 def main(db_path:str,db_reset:bool,law_names:str):
@@ -32,9 +33,9 @@ def main(db_path:str,db_reset:bool,law_names:str):
         sections = client.get_lawtext(law_text)
         law_text.sections = sections
         database.commit()
-        all_sections = law_text.get_all_sections()
+        all_sections_dict = law_text.get_all_sections()
         # We now download articles...
-        p_bar = tqdm(all_sections,desc=law_text.title)
+        p_bar = tqdm(all_sections_dict.values(),desc=law_text.title)
         for section in p_bar:
             postfix={}
             section:Section
@@ -45,7 +46,7 @@ def main(db_path:str,db_reset:bool,law_names:str):
                     Article.content.is_(None)
                 )
             ).scalar()
-            is_root = (section.lawtext_id == law_text.id)
+            is_root = (section.section_id is None)
             if num_incomplete>0 or is_root:
                 # If is_empty, we are on a root that gather more article at once... 
                 article_list=scrapper.get_section(section_legi_id=section.legi_id,text_legi_id=law_text.legi_id)
@@ -54,23 +55,24 @@ def main(db_path:str,db_reset:bool,law_names:str):
                     and_(
                         Article.legi_id.in_([a['legi_id'] for a in article_list]),
                         Article.content.is_(None))).order_by(Article.legi_id).all()
-                article_instances = {a.legi_id:a for a in articles_to_complete}
-                article_list = [a for a in article_list if a['legi_id'] in article_instances]
-                
-                for i,article_dict in enumerate(article_list):
-                    # We get the right instance.
-                    article = article_instances[article_dict['legi_id']]
-                    postfix.update({'article':f"{i+1}/{len(article_list)}",'title':'None'})
-                    if article is not None:
-                        article:Article                            
-                        title = f"{law_text.title} - {article_dict['title']}"
-                        article.title = title
-                        article.empty = False
-                        article.active = not article_dict['is_abrogated']
-                        article.content = article_dict['content']
-                        postfix.update({'title':article_dict['title']})
-                    p_bar.set_postfix(**postfix)
-                database.commit()
+                if len(articles_to_complete)>0:
+                    article_instances = {a.legi_id:a for a in articles_to_complete}
+                    article_list = [a for a in article_list if a['legi_id'] in article_instances]
+                    
+                    for i,article_dict in enumerate(article_list):
+                        # We get the right instance.
+                        article = article_instances[article_dict['legi_id']]
+                        postfix.update({'article':f"{i+1}/{len(article_list)}",'title':'None'})
+                        if article is not None:
+                            article:Article                            
+                            title = f"{law_text.title} - {article_dict['title']}"
+                            article.title = title
+                            article.empty = False
+                            article.active = not article_dict['is_abrogated']
+                            article.content = article_dict['content']
+                            postfix.update({'title':article_dict['title']})
+                        p_bar.set_postfix(**postfix)
+                    database.commit()
 
 
 

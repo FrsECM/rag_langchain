@@ -26,14 +26,6 @@
             "justMyCode": true
         },
         {
-            "name": "Feed Database Articles from Web",
-            "type": "python",
-            "request": "launch",
-            "program": "scripts/db_rag/02__feed_db_articles_WEB.py",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
             "name": "Feed RAG Chroma DB",
             "type": "python",
             "request": "launch",

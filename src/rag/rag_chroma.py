@@ -73,7 +73,7 @@ class CHROMA_RAG():
         docs_and_scores = self.db.similarity_search_by_vector_with_relevance_scores(embedding_vector,k=k)
         return docs_and_scores
 
-    def generate(self,query,k=10):
+    def generate(self,query,k=10,full_articles:bool=True):
         self.template = """You are a lawyer who advise genuine people's questions.
         Answer the question based only on the following context ; 
         {context}
@@ -91,7 +91,10 @@ class CHROMA_RAG():
         def format_docs(docs):
             result = ""
             for doc in docs:
-                result+=f"\n\n{doc.metadata['content']}\nSource:\n{doc.metadata['source']}"
+                if full_articles:
+                    result+=f"\n\n{doc.metadata['content']}\nSource:\n{doc.metadata['source']}"
+                else:
+                    result+=f"\n\n{doc.page_content}\nSource:\n{doc.metadata['source']}"
             return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(
