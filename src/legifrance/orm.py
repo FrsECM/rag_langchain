@@ -14,7 +14,11 @@ from datetime import datetime
 from .utils import parse_date
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
+import re
 
+
+def is_active(etat:str):
+    return etat in ['VIGUEUR','VIGUEUR_NON_ETEN']
 
 class Base(DeclarativeBase):
     pass
@@ -33,12 +37,11 @@ class LawText(Base):
     sections: Mapped[List['Section']] = relationship(back_populates='lawtext',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
     def get_all_sections(self)->List['Section']:
-        sections = []
+        sections = self.sections
         # We add articles...
         # We add subsections articles...
         for section in self.sections:
             sections.extend(section.get_sections())
-        sections.extend(self.sections)
         return sections
 
     def get_all_articles(self)->List['Article']:
@@ -59,12 +62,57 @@ class LawText(Base):
         date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
         return LawText(
             legi_id=result['id'],
-            active=result['etat'] == 'VIGUEUR',
+            active=is_active(result['etat']),
             title=result['titre'],
             created_date=datetime.strptime(result['dateDebut'],date_format),
             modif_date=datetime.strptime(result['lastUpdate'],date_format)
         )
 
+class CollectiveConvention(Base):
+    __tablename__ = 'LEGI_CONV'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    legi_id: Mapped[str] = mapped_column(String)
+    active: Mapped[Optional[bool]] = mapped_column(Boolean)
+    title: Mapped[Optional[str]] = mapped_column(String)
+    
+    created_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
+    modif_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
+    
+    sections: Mapped[List['Section']] = relationship(back_populates='convention',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
+    articles:Mapped[List['Article']] = relationship(back_populates='convention',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
+
+    def get_all_sections(self)->List['Section']:
+        sections = self.sections
+        # We add articles...
+        # We add subsections articles...
+        for section in self.sections:
+            sections.extend(section.get_sections())
+        return sections
+
+    def get_all_articles(self)->List['Article']:
+        articles = []
+        # We add articles...
+        # We add subsections articles...
+        for section in self.sections:
+            articles.extend(section.get_articles())
+        articles.extend(self.articles)
+        return articles
+
+    def __eq__(self, other: 'LawText') -> bool:
+        return self.legi_id == other.legi_id
+
+    def __repr__(self) -> str:
+        return f"CollectiveConvention(legi_id={self.legi_id!r}, title={self.title})"
+
+    def from_json(result: dict):
+        date_format = '%Y-%m-%dT%H:%M:%S.%f%z'
+        return LawText(
+            legi_id=result['id'],
+            active=is_active(result['etat']),
+            title=result['titre'],
+            created_date=datetime.strptime(result['dateDebut'],date_format),
+            modif_date=datetime.strptime(result['lastUpdate'],date_format)
+        )
 
 class Section(Base):
     __tablename__ = 'LEGI_SECTION'
@@ -80,13 +128,16 @@ class Section(Base):
     
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
-    
+    # Possible Parents
     lawtext_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_TEXT.id',ondelete='CASCADE'),index=True)
     lawtext: Mapped[Optional['LawText']] = relationship(back_populates='sections')
-    
+
+    convention_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_CONV.id',ondelete='CASCADE'),index=True)    
+    convention: Mapped[Optional['CollectiveConvention']] = relationship(back_populates='sections')
+
     section_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)    
     section: Mapped[Optional['Section']] = relationship(remote_side=[id])
-
+    # Possible Childs
     sections: Mapped[List['Section']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     articles: Mapped[List['Article']] = relationship(back_populates='section',cascade='save-update, merge, delete, delete-orphan',passive_deletes=True)
     
@@ -117,7 +168,7 @@ class Section(Base):
         articles = [Article.from_json(s) for s in result['articles']]
         section = Section(
             legi_id=result['id'],
-            active=result['etat'] == 'VIGUEUR',
+            active=is_active(result['etat']),
             title=result['title'],
             intOrdre=result['intOrdre'],
             start_date = parse_date(result['dateDebut']),
@@ -137,9 +188,13 @@ class Article(Base):
     empty: Mapped[Optional[bool]] = mapped_column(Boolean,default=False)
     num: Mapped[str] = mapped_column(String(30))
 
-    section_id: Mapped[int] = mapped_column(Integer, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)
-    section: Mapped['Section'] = relationship(back_populates='articles')
-    
+    # Possible Parents
+    section_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_SECTION.id',ondelete='CASCADE'),index=True)
+    section: Mapped[Optional['Section']] = relationship(back_populates='articles')
+
+    convention_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('LEGI_CONV.id',ondelete='CASCADE'),index=True)    
+    convention: Mapped[Optional['CollectiveConvention']] = relationship(back_populates='articles')
+
     version: Mapped[Optional[str]] = mapped_column(String(30))
     title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -148,8 +203,7 @@ class Article(Base):
     created_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     modif_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.utcnow))
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=(datetime.fromisoformat('1804-03-21')))
-    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None, nullable=True)
-    
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, default=None, nullable=True)    
 
     def __repr__(self) -> str:
         return f"Article(legi_id={self.legi_id!r}, title={self.title})"
@@ -157,9 +211,17 @@ class Article(Base):
     def from_json(result: dict):
         article = Article(
             legi_id=result['id'],
-            active=result['etat'] == 'VIGUEUR',
-            num=f"{result['num']}"
+            active=is_active(result['etat']),
+            num=f"{result['num']}",
         )
+        def feed(article:Article,source:dict,prop_name:str):
+            if prop_name in source:
+                value = source[prop_name]
+                if isinstance(value,str):
+                    value=re.sub(r'<.*?>','',value)
+                setattr(article,prop_name,value)        
+        for prop in ['content','nota']:
+            feed(article,result,prop)
         return article
 
     def update(self,result:dict):

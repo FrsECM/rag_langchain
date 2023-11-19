@@ -7,13 +7,21 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Feed Database Conventions",
+            "type": "python",
+            "request": "launch",
+            "program": "scripts/db_rag/01__feed_db_conventions.py",
+            "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Feed Database LawTexts from API",
+            "name": "Feed Database LawTexts",
             "type": "python",
             "request": "launch",
-            "program": "scripts/db_rag/01__feed_db_lawtexts_API.py",
+            "program": "scripts/db_rag/01__feed_db_lawtexts.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },

@@ -33,20 +33,12 @@ class CHROMA_RAG():
         # Chroma
         self.db = Chroma(collection_name='chroma_db',embedding_function=self.embeddings,persist_directory=db_dir)
 
-        self.template = """Answer the question based only on the following context
-        {context}
-        You must respect theses rules : 
-        -   The answer should be in the same language than the question.
-        -   Use bulletpoints when multiple answers
-        -   Add a Sources section in the end that reference document and position of the informations provided
-        Question: {question}
-        """
         self.law_texts=None
         self.load_config()
     
     def save_config(self):
-        with open(self.config_path,'w') as jsf:
-            json.dump({'law_texts':self.law_texts},jsf,default='str',indent=4)
+        with open(self.config_path,'w',encoding='utf8') as jsf:
+            json.dump({'law_texts':self.law_texts},jsf,default='str',ensure_ascii=False,indent=4)
 
     def load_config(self):
         if os.path.exists(self.config_path):
@@ -82,13 +74,24 @@ class CHROMA_RAG():
         return docs_and_scores
 
     def generate(self,query,k=10):
+        self.template = """You are a lawyer who advise genuine people's questions.
+        Answer the question based only on the following context ; 
+        {context}
+        You must respect theses rules : 
+        -   The answer should be in the same language than the question.
+        -   Use bulletpoints when multiple answers
+        -   Add a Sources section in the end that reference documents from the context that are used in the answer and only them.
+
+        Question: {question}
+        """
+
         prompt = ChatPromptTemplate.from_template(self.template)
 
         assert self.db is not None,"Load or Create a database before generating..."
         def format_docs(docs):
             result = ""
             for doc in docs:
-                result+=f"\n\n{doc.page_content}\nSource:\n{doc.metadata['source']}"
+                result+=f"\n\n{doc.metadata['content']}\nSource:\n{doc.metadata['source']}"
             return result
         retriever = self.db.as_retriever(search_kwargs={'k':k})
         model = AzureChatOpenAI(
@@ -96,6 +99,7 @@ class CHROMA_RAG():
             azure_endpoint =os.getenv('OPENAI_BASE_URL'),
             model=os.getenv('OPENAI_MODEL'),
             api_version="2023-07-01-preview")
+        
         chain = (
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
             | prompt

@@ -1,2 +1,3 @@
 from .legifrance_client import LegifranceClient
 from .legifrance_database import LegifranceDatabase
+from .legifrance_scrapper import LegifranceScrapper

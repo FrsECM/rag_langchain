@@ -2,10 +2,11 @@ import requests
 import os
 import json
 from datetime import datetime,timedelta
-from typing import List
-from .orm import LawText,Section,Article
+from typing import List,Dict
+from .orm import LawText,Section,Article,CollectiveConvention
 from tqdm.auto import tqdm
 import time
+import re 
 
 class LegifranceClient:
     def __init__(self,client_id:str=None,client_secret:str=None,production:bool=False,api_limit_per_second:int=None):
@@ -69,23 +70,30 @@ class LegifranceClient:
         else:
             raise Exception(f'Response {response.status_code}\nToken unavailable with provided credentials\n{data}')
     
-    def list_lawtexts(self,query:str='code civil')->List[LawText]:
-        api_url = f"{self.base_url}/list/code"
-        payload = json.dumps({
-            "pageSize": 50,
-            "sort": "TITLE_ASC",
-            "pageNumber": 1,
-            "codeName": query,
-            "states": [
-                "VIGUEUR"
-            ]
-        })
-        response = self.request_session.post(
-            url=api_url,
-            data=payload,
-            headers=self.headers
-        )
-        return [LawText.from_json(t) for t in response.json()['results']]
+    def list_lawtexts(self,query:str='code civil')->Dict[str,LawText]:
+        text_queries = query.split('|')
+        law_texts =[]
+        for query in text_queries:
+            api_url = f"{self.base_url}/list/code"
+            payload = json.dumps({
+                "pageSize": 50,
+                "sort": "TITLE_ASC",
+                "pageNumber": 1,
+                "codeName": query,
+                "states": [
+                    "VIGUEUR"
+                ]
+            })
+            response = self.request_session.post(
+                url=api_url,
+                data=payload,
+                headers=self.headers
+            )
+            law_texts.extend([LawText.from_json(t) for t in response.json()['results']])
+        law_texts:List[LawText]
+        law_texts_dict = {l.legi_id:l for l in law_texts}
+        
+        return law_texts_dict
     
     def get_lawtext(self,lawtext:LawText,search:str="",progress=True)->List[Section]:
         if progress:
@@ -113,6 +121,38 @@ class LegifranceClient:
                 s_bar.update(1)
             return result
         return [Section.from_json(t) for t in s_bar]
+
+    def get_convention(self,convention:CollectiveConvention,progress=True)->CollectiveConvention:
+        if progress:
+            s_bar = tqdm(desc=convention.title)
+        api_url = f"{self.base_url}/consult/kaliText"
+        payload = json.dumps({
+            "id": convention.legi_id,
+            "searchedString": ""
+            })
+        response = self.request_session.post(
+            url=api_url,
+            data=payload,
+            headers=self.headers
+        )
+        response_json = response.json()
+        sections_json = response_json['sections']
+        articles_json = response_json['articles']
+        if progress:
+            s_bar.total = len(sections_json)+len(articles_json)
+        sections = []
+        articles = []
+        for s in sections_json:
+            sections.append(Section.from_json(s))
+            if progress:
+                s_bar.update(1)
+        for a in articles_json:
+            articles.append(Article.from_json(a))
+            if progress:
+                s_bar.update(1)
+        convention.articles = articles
+        convention.sections = sections
+        return convention
 
     def get_article_dict(self,article_legi_id:str)->dict:
         api_url = f"{self.base_url}/consult/getArticleByCid"
