@@ -10,7 +10,7 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument('--db_path',default='data/sqlite/legifrance.db')
 parser.add_argument('--db_reset',action='store_true',default=False)
-parser.add_argument('--convention_name',default='notaire|notariat')
+parser.add_argument('--convention_name',default='caoutchouc')
 
 
 def main(db_path:str,db_reset:bool,convention_name:str):
@@ -40,6 +40,8 @@ def main(db_path:str,db_reset:bool,convention_name:str):
             articles = convention.get_all_articles()
             for article in tqdm(articles.values(),desc=convention.title):
                 article.title = f"{convention.title} - Art. {article.num}"
+                article.content = article.content.strip()
+                article.active = True
     database.session.add_all(created_conventions)
     database.commit()
 

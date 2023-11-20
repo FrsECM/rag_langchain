@@ -74,13 +74,18 @@ class CHROMA_RAG():
         return docs_and_scores
 
     def generate(self,query,k=10,full_articles:bool=True):
-        self.template = """You are a lawyer who advise genuine people's questions.
-        Answer the question based only on the following context ; 
+        self.template = """
+        Context is bellow : 
+
+        ------------------- 
         {context}
-        You must respect theses rules : 
-        -   The answer should be in the same language than the question.
+        ------------------- 
+
+        You must answer question using context and respect theses rules :
+        -   The answer should only contains informations from context
+        -   The answer should be in the same language than the question
         -   Use bulletpoints when multiple answers
-        -   Add a Sources section in the end that reference documents from the context that are used in the answer and only them.
+        -   Add a "sources" section in the end that reference documents from the context that are present in the answer and only them.
 
         Question: {question}
         """
@@ -102,7 +107,6 @@ class CHROMA_RAG():
             azure_endpoint =os.getenv('OPENAI_BASE_URL'),
             model=os.getenv('OPENAI_MODEL'),
             api_version="2023-07-01-preview")
-        
         chain = (
             {"context": retriever | format_docs, "question": RunnablePassthrough()}
             | prompt

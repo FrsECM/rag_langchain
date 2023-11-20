@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select,func,or_
+from sqlalchemy import select,func,or_,and_
 from typing import Union,List
 from .orm import Base,LawText,Section,Article,CollectiveConvention
 import os
@@ -82,10 +82,12 @@ class LegifranceDatabase:
             List[CollectiveConvention]: _description_
         """
         query = select(CollectiveConvention).where(
-            or_(
-                CollectiveConvention.title.like(title_str),
-                CollectiveConvention.title.contains(title_str),
-                CollectiveConvention.legi_id.like(title_str)
+            and_(
+                CollectiveConvention.title.startswith('Convention'),
+                or_(
+                    CollectiveConvention.title.like(title_str),
+                    CollectiveConvention.title.contains(title_str)
+                )
                 )
         )
         results = self.session.execute(query).all()

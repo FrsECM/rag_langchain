@@ -102,7 +102,7 @@ class LegifranceScrapper():
         for text_query in text_queries:
             url = f"https://www.legifrance.gouv.fr/liste/idcc"
             url +=f"?titre_suggest={quote(text_query,safe='')}"
-            url +="&facetteEtat=VIGUEUR_NON_ETEN&facetteEtat=VIGUEUR&sortValue=DATE_UPDATE"
+            url +="&facetteEtat=VIGUEUR_NON_ETEN&facetteEtat=VIGUEUR&facetteEtat=VIGUEUR_ETEN&sortValue=DATE_UPDATE"
             response = self.session.get(url)
             page_html = response.text
             soup = BeautifulSoup(page_html, 'lxml')

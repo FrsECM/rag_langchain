@@ -18,7 +18,7 @@ import re
 
 
 def is_active(etat:str):
-    return etat in ['VIGUEUR','VIGUEUR_NON_ETEN']
+    return 'VIGUEUR' in etat
 
 class Base(DeclarativeBase):
     pass
